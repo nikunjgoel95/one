@@ -15,6 +15,7 @@ import androidx.wear.watchface.complications.datasource.SuspendingComplicationDa
 import com.charliesbot.onewearos.R
 import com.charliesbot.onewearos.presentation.MainActivity
 import com.charliesbot.shared.core.constants.AppConstants.LOG_TAG
+import com.charliesbot.shared.core.constants.PredefinedFastingGoals
 import com.charliesbot.shared.core.data.repositories.fastingDataRepository.FastingDataRepository
 import com.charliesbot.shared.core.models.FastingDataItem
 import com.charliesbot.shared.core.utils.calculateProgressPercentage
@@ -22,10 +23,7 @@ import com.charliesbot.shared.core.utils.getHours
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
-private const val TARGET_HOURS = 16f
-
-class MainComplicationService() :
-    SuspendingComplicationDataSourceService(), KoinComponent {
+class MainComplicationService : SuspendingComplicationDataSourceService(), KoinComponent {
 
     private val repository: FastingDataRepository by inject()
 
@@ -33,9 +31,12 @@ class MainComplicationService() :
         if (type != ComplicationType.GOAL_PROGRESS) {
             return null
         }
+        // Preview with a default goal, e.g., 16:8
+        val previewGoal = PredefinedFastingGoals.SIXTEEN_EIGHT
+        val previewTargetHours = previewGoal.durationMillis / (1000f * 60 * 60)
         return GoalProgressComplicationData.Builder(
-            value = TARGET_HOURS / 2f, // Example: 8 hours towards 16h goal
-            targetValue = TARGET_HOURS,
+            value = previewTargetHours / 2f,
+            targetValue = previewTargetHours,
             contentDescription = PlainComplicationText.Builder(getString(R.string.cd_fasting_preview)).build()
         )
             .setMonochromaticImage(
@@ -87,16 +88,21 @@ class MainComplicationService() :
         fastingData: FastingDataItem,
         tapAction: PendingIntent?
     ): ComplicationData {
+        val currentGoal = PredefinedFastingGoals.getGoalById(fastingData.fastingGoalId)
+        val totalGoalMillis = currentGoal.durationMillis
+        val targetHours = totalGoalMillis / (1000f * 60 * 60) // Calculate target hours as float
+
         val currentTime = System.currentTimeMillis()
         val elapsedMillis = (currentTime - fastingData.startTimeInMillis).coerceAtLeast(0L)
-        val percentage = calculateProgressPercentage(elapsedMillis)
+        val percentage = calculateProgressPercentage(elapsedMillis, totalGoalMillis)
         val elapsedHours = getHours(elapsedMillis)
 
         return GoalProgressComplicationData.Builder(
-            value = elapsedHours.toFloat().coerceAtMost(TARGET_HOURS),
-            targetValue = TARGET_HOURS,
+            value = elapsedHours.toFloat().coerceAtMost(targetHours),
+            targetValue = targetHours,
             contentDescription = PlainComplicationText.Builder(
-                getString(R.string.complication_text_fasting_format, percentage.toInt(), elapsedHours.toInt(), getString(R.string.target_duration_short))
+                // getString(R.string.target_duration_short) might need to be dynamic if it's hardcoded to "16h"
+                getString(R.string.complication_text_fasting_format, percentage, elapsedHours.toInt(), currentGoal.durationDisplay)
             ).build()
         )
             .setMonochromaticImage(

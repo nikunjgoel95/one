@@ -1,12 +1,16 @@
 package com.charliesbot.shared.core.utils
 
-const val TOTAL_FASTING_TIME_MILLIS = 16 * 60 * 60 * 1000L
-
-fun calculateProgressFraction(progressMillis: Long): Float {
-    return (progressMillis.toFloat() / TOTAL_FASTING_TIME_MILLIS).coerceIn(0f, 1f)
+fun calculateProgressFraction(progressMillis: Long, totalGoalMillis: Long): Float {
+    if (totalGoalMillis == 0L) {
+        return 0.0f
+    }
+    return (progressMillis.toFloat() / totalGoalMillis).coerceIn(0f, 1f)
 }
 
-fun calculateProgressPercentage(progressMillis: Long): Int {
-    val progressFraction = calculateProgressFraction(progressMillis)
+fun calculateProgressPercentage(progressMillis: Long, totalGoalMillis: Long): Int {
+    if (totalGoalMillis == 0L) {
+        return 0
+    }
+    val progressFraction = calculateProgressFraction(progressMillis, totalGoalMillis)
     return progressFraction.times(100).toInt()
 }

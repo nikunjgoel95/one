@@ -12,12 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -38,7 +33,6 @@ import com.charliesbot.shared.core.components.TimeInfoDisplay
 import com.charliesbot.shared.core.utils.calculateProgressFraction
 import com.charliesbot.shared.core.utils.convertMillisToLocalDateTime
 import com.charliesbot.shared.core.utils.formatTimestamp
-import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -52,12 +46,13 @@ fun rememberIsLargeScreen(): Boolean {
 
 @Composable
 fun WearTodayScreen(viewModel: WearTodayViewModel = koinViewModel()) {
-    var elapsedTime by remember { mutableLongStateOf(0L) }
     val isLargeScreen = rememberIsLargeScreen()
     val startTimeInMillis by viewModel.startTimeInMillis.collectAsStateWithLifecycle()
+    val elapsedTime by viewModel.elapsedTime.collectAsStateWithLifecycle()
     val startTimeInLocalDateTime =
         convertMillisToLocalDateTime(startTimeInMillis)
     val isFasting by viewModel.isFasting.collectAsStateWithLifecycle()
+    val fastingGoalId by viewModel.fastingGoalId.collectAsStateWithLifecycle()
     val fastButtonLabel =
         if (isFasting) stringResource(R.string.end_fast) else stringResource(R.string.start_fasting)
 
@@ -66,19 +61,12 @@ fun WearTodayScreen(viewModel: WearTodayViewModel = koinViewModel()) {
     } else {
         stringResource(R.string.target_duration_hours)
     }
-    LaunchedEffect(isFasting) {
-        if (isFasting) {
-            while (true) {
-                elapsedTime = System.currentTimeMillis() - startTimeInMillis
-                delay(1000L) // refresh timer every second
-            }
-        } else {
-            elapsedTime = 0L
-        }
-    }
+    val currentGoal = com.charliesbot.shared.core.constants.PredefinedFastingGoals.getGoalById(fastingGoalId)
+    val totalGoalMillis = currentGoal.durationMillis
+
     ScreenScaffold {
         FastingProgressBar(
-            progress = calculateProgressFraction(elapsedTime),
+            progress = calculateProgressFraction(elapsedTime, totalGoalMillis),
             strokeWidth = 8.dp,
             indicatorColor = MaterialTheme.colorScheme.primaryDim,
             trackColor = MaterialTheme.colorScheme.onBackground,
@@ -111,7 +99,7 @@ fun WearTodayScreen(viewModel: WearTodayViewModel = koinViewModel()) {
                         )
                         TimeInfoDisplay(
                             title = stringResource(R.string.label_goal),
-                            date = startTimeInLocalDateTime.plusHours(16),
+                            date = startTimeInLocalDateTime.plusHours(currentGoal.durationDisplay.toLongOrNull() ?: 16L),
                             isForWear = true
                         )
                     }

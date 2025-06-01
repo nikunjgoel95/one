@@ -25,11 +25,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -46,7 +42,6 @@ import com.charliesbot.one.today.components.CurrentFastingProgress
 import com.charliesbot.one.ui.theme.OneTheme
 import com.charliesbot.shared.core.constants.PredefinedFastingGoals
 import com.charliesbot.shared.core.utils.convertMillisToLocalDateTime
-import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -58,23 +53,12 @@ fun TodayScreen(viewModel: TodayViewModel = koinViewModel()) {
     val isFasting by viewModel.isFasting.collectAsStateWithLifecycle()
     val starTimeInMillis by viewModel.startTimeInMillis.collectAsStateWithLifecycle()
     val fastingGoalId by viewModel.fastingGoalId.collectAsStateWithLifecycle()
+    val elapsedTime by viewModel.elapsedTime.collectAsStateWithLifecycle()
     val startTimeInLocalDateTime =
         convertMillisToLocalDateTime(starTimeInMillis)
-    var elapsedTime by remember { mutableLongStateOf(0L) }
     val fastButtonLabel =
         stringResource(if (isFasting) R.string.end_fast else R.string.start_fasting)
     val scrollState = rememberScrollState()
-
-    LaunchedEffect(isFasting) {
-        if (isFasting) {
-            while (true) {
-                elapsedTime = System.currentTimeMillis() - starTimeInMillis
-                delay(1000L) // refresh timer every second
-            }
-        } else {
-            elapsedTime = 0L
-        }
-    }
 
     Scaffold { innerPadding ->
         if (isTimePickerDialogOpen) {

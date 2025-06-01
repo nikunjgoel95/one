@@ -109,6 +109,7 @@ class OneWidget : GlanceAppWidget(), KoinComponent {
                     WidgetProgressBar(
                         isFasting = fastingData.isFasting,
                         elapsedTime = elapsedMillis,
+                        totalGoalMillis = selectedGoal.durationMillis,
                         isGoalMet = isGoalMet
                     )
                     Spacer(modifier = GlanceModifier.defaultWeight())
@@ -190,11 +191,12 @@ class OneWidget : GlanceAppWidget(), KoinComponent {
     fun WidgetProgressBar(
         isFasting: Boolean,
         elapsedTime: Long,
+        totalGoalMillis: Long,
         isGoalMet: Boolean,
     ) {
         val context = LocalContext.current
         val displayMetrics = context.resources.displayMetrics
-        val progress = calculateProgressFraction(elapsedTime)
+        val progress = calculateProgressFraction(elapsedTime, totalGoalMillis)
 
         val trackComposeColor =
             GlanceTheme.colors.surfaceVariant.getColor(context)

@@ -8,10 +8,14 @@ import com.charliesbot.one.widgets.OneWidget
 import com.charliesbot.shared.core.constants.PredefinedFastingGoals
 import com.charliesbot.shared.core.data.repositories.fastingDataRepository.FastingDataRepository
 import com.charliesbot.shared.core.notifications.NotificationScheduler
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class TodayViewModel(
@@ -39,6 +43,27 @@ class TodayViewModel(
 
     private val _isGoalBottomSheetOpen = MutableStateFlow(false)
     val isGoalBottomSheetOpen: StateFlow<Boolean> = _isGoalBottomSheetOpen
+
+    private val _elapsedTime = MutableStateFlow(0L)
+    val elapsedTime: StateFlow<Long> = _elapsedTime
+
+    init {
+        viewModelScope.launch {
+            // Combine isFasting and startTimeInMillis flows
+            combine(isFasting, startTimeInMillis) { fasting, startTime ->
+                Pair(fasting, startTime)
+            }.collectLatest { (fasting, startTime) ->
+                if (fasting && startTime > 0) {
+                    while (isActive) {
+                        _elapsedTime.value = System.currentTimeMillis() - startTime
+                        delay(1000L)
+                    }
+                } else {
+                    _elapsedTime.value = 0L
+                }
+            }
+        }
+    }
 
     fun openTimePickerDialog() {
         _isTimePickerDialogOpen.value = true
