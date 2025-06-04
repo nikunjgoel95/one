@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.sp
 import com.charliesbot.shared.core.components.FastingProgressBar
 import com.charliesbot.shared.core.utils.calculateProgressFraction
 import com.charliesbot.shared.core.utils.calculateProgressPercentage
-import com.charliesbot.shared.core.utils.formatTimestamp
+import com.charliesbot.shared.core.utils.formatDuration
 import com.charliesbot.one.R
 import com.charliesbot.one.ui.theme.OneTheme
 import com.charliesbot.shared.core.constants.PredefinedFastingGoals
@@ -36,7 +36,7 @@ fun FastingStatusIndicator(
         stringResource(R.string.upcoming_fast).uppercase()
     }
     val timeLabel = if (isFasting) {
-        formatTimestamp(elapsedTime)
+        formatDuration(elapsedTime)
     } else {
         stringResource(
             R.string.fasting_duration_hours,

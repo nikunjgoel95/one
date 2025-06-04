@@ -38,7 +38,7 @@ import com.charliesbot.shared.core.components.TimeInfoDisplay
 import com.charliesbot.shared.core.constants.PredefinedFastingGoals
 import com.charliesbot.shared.core.utils.calculateProgressFraction
 import com.charliesbot.shared.core.utils.convertMillisToLocalDateTime
-import com.charliesbot.shared.core.utils.formatTimestamp
+import com.charliesbot.shared.core.utils.formatDuration
 import com.charliesbot.shared.core.utils.getHours
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
@@ -66,7 +66,7 @@ fun WearTodayScreen(viewModel: WearTodayViewModel = koinViewModel()) {
     val currentGoal = PredefinedFastingGoals.goalsById[fastingGoalId]
 
     val timeLabel = if (isFasting) {
-        formatTimestamp(elapsedTime)
+        formatDuration(elapsedTime)
     } else {
         stringResource(R.string.target_duration_hours, currentGoal?.durationDisplay.toString())
     }

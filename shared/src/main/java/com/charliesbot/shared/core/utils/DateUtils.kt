@@ -23,7 +23,7 @@ fun getHours(millis: Long?): Long {
     return millis / (1000 * 60 * 60)
 }
 
-fun formatTimestamp(millis: Long): String {
+fun formatDuration(millis: Long): String {
     val seconds = (millis / 1000) % 60
     val minutes = (millis / (1000 * 60)) % 60
     val hours = getHours(millis)
@@ -33,7 +33,7 @@ fun formatTimestamp(millis: Long): String {
     )
 }
 
-fun formatTimestamp(millis: Long, format: TimeFormat = TimeFormat.DURATION): String {
+fun formatDateTime(millis: Long, format: TimeFormat = TimeFormat.DATE_TIME): String {
     val dateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(millis), ZoneId.systemDefault())
     return formatDate(dateTime, format)
 }
