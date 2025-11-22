@@ -11,6 +11,7 @@ import com.charliesbot.shared.core.data.repositories.preferencesRepository.Prefe
 import com.charliesbot.shared.core.datastore.fastingDataStore
 import com.charliesbot.shared.core.domain.usecase.CalculateSmartNotificationTimeUseCase
 import com.charliesbot.shared.core.domain.usecase.FastingUseCase
+import com.charliesbot.shared.core.domain.usecase.GetSmartNotificationDetailsUseCase
 import com.charliesbot.shared.core.domain.usecase.ScheduleSmartNotificationsUseCase
 import com.charliesbot.shared.core.services.FastingEventManager
 import com.google.android.gms.wearable.Wearable
@@ -27,6 +28,7 @@ val sharedModule = module {
     single<FastingEventManager> { FastingEventManager() }
     single { FastingUseCase(get(), get(), get()) }
     single { CalculateSmartNotificationTimeUseCase(get(), get()) }
+    single { GetSmartNotificationDetailsUseCase(get(), get()) }
     single { ScheduleSmartNotificationsUseCase(get(), get(), get()) }
 
     single { Wearable.getDataClient(androidContext()) }

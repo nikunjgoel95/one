@@ -2,6 +2,7 @@ package com.charliesbot.shared.core.domain.usecase
 
 import com.charliesbot.shared.core.data.repositories.fastingHistoryRepository.FastingHistoryRepository
 import com.charliesbot.shared.core.data.repositories.preferencesRepository.PreferencesRepository
+import com.charliesbot.shared.core.models.NotificationStrategy
 import com.charliesbot.shared.core.utils.calculateCircularMean
 import kotlinx.coroutines.flow.first
 import java.time.Instant
@@ -48,7 +49,33 @@ class CalculateSmartNotificationTimeUseCase(
         return nextTrigger
     }
 
-    private suspend fun calculateNotificationTime(): LocalTime {
+    /**
+     * Get the strategy that would be used for notification calculation.
+     * This helps UI display why a particular time was chosen.
+     */
+    suspend fun getStrategy(): NotificationStrategy {
+        val recentStartTimes = fastingHistoryRepository.getRecentFastStartTimes(REQUIRED_HISTORY_COUNT).first()
+        
+        if (recentStartTimes.size >= REQUIRED_HISTORY_COUNT) {
+            val dailyFastTimes = filterDailyFasts(recentStartTimes)
+            if (dailyFastTimes.size >= REQUIRED_HISTORY_COUNT) {
+                return NotificationStrategy.MOVING_AVERAGE
+            }
+        }
+        
+        val bedtime = preferencesRepository.getBedtime().first()
+        if (bedtime != null) {
+            return NotificationStrategy.BEDTIME_BASED
+        }
+        
+        return NotificationStrategy.DEFAULT
+    }
+
+    /**
+     * Calculate the notification time based on priority fallback strategy.
+     * Made public so other use cases can compose this logic.
+     */
+    suspend fun calculateNotificationTime(): LocalTime {
         // Priority 1: Moving average of recent fasts
         val recentStartTimes = fastingHistoryRepository.getRecentFastStartTimes(REQUIRED_HISTORY_COUNT).first()
         

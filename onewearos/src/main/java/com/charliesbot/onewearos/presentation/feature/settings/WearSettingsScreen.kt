@@ -18,6 +18,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
@@ -50,7 +52,10 @@ fun WearSettingsScreen(
             smartNotificationsEnabled = uiState.smartNotificationsEnabled,
             vibrationEnabled = uiState.vibrationEnabled,
             bedtime = uiState.bedtime,
-            calculatedNotificationTime = uiState.calculatedNotificationTime,
+            notificationStrategy = uiState.notificationStrategy,
+            smartReminderTime = uiState.smartReminderTime,
+            eatingWindowTime = uiState.eatingWindowTime,
+            is36HourFast = uiState.is36HourFast,
             onToggleSmartNotifications = viewModel::toggleSmartNotifications,
             onToggleVibration = viewModel::toggleVibration,
             onSetBedtime = { showTimePicker = true },
@@ -64,7 +69,10 @@ private fun WearSettingsContent(
     smartNotificationsEnabled: Boolean,
     vibrationEnabled: Boolean,
     bedtime: LocalTime?,
-    calculatedNotificationTime: String,
+    notificationStrategy: String,
+    smartReminderTime: String,
+    eatingWindowTime: String?,
+    is36HourFast: Boolean,
     onToggleSmartNotifications: () -> Unit,
     onToggleVibration: () -> Unit,
     onSetBedtime: () -> Unit,
@@ -72,96 +80,159 @@ private fun WearSettingsContent(
     modifier: Modifier = Modifier
 ) {
     ScreenScaffold {
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+        ScalingLazyColumn(
+            modifier = modifier.fillMaxSize(),
+            state = rememberScalingLazyListState(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Title
-            Text(
-                text = "Settings",
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center
-            )
+            item {
+                Text(
+                    text = "Settings",
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
+            }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
             // Smart Notifications Toggle
-            TextToggleButton(
-                checked = smartNotificationsEnabled,
-                onCheckedChange = { onToggleSmartNotifications() },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Smart Notifications",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center
-                )
+            item {
+                TextToggleButton(
+                    checked = smartNotificationsEnabled,
+                    onCheckedChange = { onToggleSmartNotifications() },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                ) {
+                    Text(
+                        text = "Smart Notifications",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
 
             // Vibration Toggle
-            TextToggleButton(
-                checked = vibrationEnabled,
-                onCheckedChange = { onToggleVibration() },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Vibration",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center
-                )
+            item {
+                TextToggleButton(
+                    checked = vibrationEnabled,
+                    onCheckedChange = { onToggleVibration() },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                ) {
+                    Text(
+                        text = "Vibration",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
 
             // Bedtime Button
-            TextButton(
-                onClick = onSetBedtime,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "Bedtime",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = bedtime?.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
-                            ?: "Not set",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            item {
+                TextButton(
+                    onClick = onSetBedtime,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Bedtime",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = bedtime?.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+                                ?: "Not set",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
             // Clear bedtime if set
             if (bedtime != null) {
-                TextButton(
-                    onClick = onClearBedtime,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Clear Bedtime",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
+                item {
+                    TextButton(
+                        onClick = onClearBedtime,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                    ) {
+                        Text(
+                            text = "Clear Bedtime",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
-            // Next reminder info (read-only)
+            // Notification schedule display
             if (smartNotificationsEnabled) {
-                Text(
-                    text = "Next reminder:",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = calculatedNotificationTime,
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center
-                )
+                item {
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                
+                // Strategy label
+                item {
+                    Text(
+                        text = "Notifications ($notificationStrategy)",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+                
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                
+                // Eating window notification (if not 36h fast)
+                if (!is36HourFast && eatingWindowTime != null) {
+                    item {
+                        Text(
+                            text = "• $eatingWindowTime",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    item {
+                        Text(
+                            text = "Eating window (1h before)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    
+                    item {
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
+                }
+                
+                // Smart reminder notification
+                item {
+                    Text(
+                        text = "• $smartReminderTime",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center
+                    )
+                }
+                item {
+                    Text(
+                        text = "Start fasting",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+                
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
         }
     }
@@ -175,7 +246,10 @@ private fun WearSettingsScreenPreview() {
             smartNotificationsEnabled = true,
             vibrationEnabled = true,
             bedtime = LocalTime.of(22, 30),
-            calculatedNotificationTime = "8:00 PM",
+            notificationStrategy = "based on bedtime",
+            smartReminderTime = "4:00 PM",
+            eatingWindowTime = "3:00 PM",
+            is36HourFast = false,
             onToggleSmartNotifications = {},
             onToggleVibration = {},
             onSetBedtime = {},

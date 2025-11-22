@@ -5,7 +5,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.charliesbot.shared.core.data.repositories.preferencesRepository.PreferencesRepository
 import com.charliesbot.shared.core.domain.usecase.CalculateSmartNotificationTimeUseCase
+import com.charliesbot.shared.core.domain.usecase.GetSmartNotificationDetailsUseCase
 import com.charliesbot.shared.core.domain.usecase.ScheduleSmartNotificationsUseCase
+import com.charliesbot.shared.core.models.NotificationStrategy
+import com.charliesbot.shared.core.models.SmartNotificationResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,29 +23,42 @@ data class SettingsUiState(
     val smartNotificationsEnabled: Boolean = true,
     val vibrationEnabled: Boolean = true,
     val bedtime: LocalTime? = null,
-    val calculatedNotificationTime: String = "Calculating..."
+    val notificationStrategy: String = "default",
+    val smartReminderTime: String = "8:00 PM",
+    val eatingWindowTime: String? = "7:00 PM",
+    val is36HourFast: Boolean = false
 )
 
 class WearSettingsViewModel(
     application: Application,
     private val preferencesRepository: PreferencesRepository,
-    private val calculateSmartNotificationTimeUseCase: CalculateSmartNotificationTimeUseCase,
+    private val getSmartNotificationDetailsUseCase: GetSmartNotificationDetailsUseCase,
     private val scheduleSmartNotificationsUseCase: ScheduleSmartNotificationsUseCase
 ) : AndroidViewModel(application) {
 
-    private val _calculatedTime = MutableStateFlow("Calculating...")
+    private val _notificationDetails = MutableStateFlow<SmartNotificationResult?>(null)
 
     val uiState: StateFlow<SettingsUiState> = combine(
         preferencesRepository.getSmartNotificationsEnabled(),
         preferencesRepository.getVibrationEnabled(),
         preferencesRepository.getBedtime(),
-        _calculatedTime
-    ) { smartEnabled, vibrationEnabled, bedtime, calculatedTime ->
+        _notificationDetails
+    ) { smartEnabled, vibrationEnabled, bedtime, details ->
+        val formatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+        
         SettingsUiState(
             smartNotificationsEnabled = smartEnabled,
             vibrationEnabled = vibrationEnabled,
             bedtime = bedtime,
-            calculatedNotificationTime = calculatedTime
+            notificationStrategy = when (details?.strategy) {
+                NotificationStrategy.MOVING_AVERAGE -> "based on your routine"
+                NotificationStrategy.BEDTIME_BASED -> "based on bedtime"
+                NotificationStrategy.DEFAULT -> "default"
+                null -> "calculating..."
+            },
+            smartReminderTime = details?.smartReminderTime?.toLocalTime()?.format(formatter) ?: "8:00 PM",
+            eatingWindowTime = details?.eatingWindowClosingTime?.toLocalTime()?.format(formatter),
+            is36HourFast = details?.eatingWindowClosingTime == null
         )
     }.stateIn(
         scope = viewModelScope,
@@ -51,18 +67,17 @@ class WearSettingsViewModel(
     )
     
     init {
-        // Calculate notification time asynchronously
-        calculateNextNotificationTime()
+        // Calculate notification details on initialization
+        calculateNotificationDetails()
     }
     
-    private fun calculateNextNotificationTime() {
+    private fun calculateNotificationDetails() {
         viewModelScope.launch {
             try {
-                val nextTime = calculateSmartNotificationTimeUseCase()
-                val formatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-                _calculatedTime.value = nextTime.toLocalTime().format(formatter)
+                val details = getSmartNotificationDetailsUseCase()
+                _notificationDetails.value = details
             } catch (e: Exception) {
-                _calculatedTime.value = "Not scheduled"
+                // Keep default values on error
             }
         }
     }
@@ -73,10 +88,10 @@ class WearSettingsViewModel(
             val newValue = !currentValue
             preferencesRepository.setSmartNotificationsEnabled(newValue)
             
-            // Reschedule notifications and recalculate time if enabled
+            // Reschedule notifications and recalculate details if enabled
             if (newValue) {
                 scheduleSmartNotificationsUseCase()
-                calculateNextNotificationTime()
+                calculateNotificationDetails()
             }
         }
     }
@@ -92,7 +107,7 @@ class WearSettingsViewModel(
         viewModelScope.launch {
             preferencesRepository.setBedtime(time)
             // Recalculate and reschedule notifications with new bedtime
-            calculateNextNotificationTime()
+            calculateNotificationDetails()
             if (preferencesRepository.getSmartNotificationsEnabled().stateIn(viewModelScope).value) {
                 scheduleSmartNotificationsUseCase()
             }
