@@ -1,18 +1,18 @@
 package com.charliesbot.onewearos.presentation.di
 
-import androidx.room.Room
-import com.charliesbot.onewearos.BuildConfig
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import com.charliesbot.onewearos.complication.ComplicationUpdateManager
+import com.charliesbot.onewearos.presentation.data.NotificationScheduleRepository
 import com.charliesbot.onewearos.presentation.data.WearStringProvider
+import com.charliesbot.onewearos.presentation.domain.WatchScheduleSmartNotificationsUseCase
 import com.charliesbot.onewearos.presentation.feature.settings.WearSettingsViewModel
 import com.charliesbot.onewearos.presentation.notifications.NotificationWorker
 import com.charliesbot.onewearos.presentation.notifications.OngoingActivityManager
 import com.charliesbot.onewearos.presentation.services.LocalWatchFastingCallbacks
 import com.charliesbot.onewearos.presentation.feature.today.WearTodayViewModel
 import com.charliesbot.shared.core.abstraction.StringProvider
-import com.charliesbot.shared.core.data.db.AppDatabase
-import com.charliesbot.shared.core.data.repositories.fastingHistoryRepository.FastingHistoryRepository
-import com.charliesbot.shared.core.data.repositories.fastingHistoryRepository.FastingHistoryRepositoryImpl
+import com.charliesbot.shared.core.domain.usecase.ScheduleSmartNotificationsUseCase
 import com.charliesbot.shared.core.notifications.NotificationScheduler
 import com.charliesbot.shared.core.services.FastingEventCallbacks
 import org.koin.android.ext.koin.androidContext
@@ -20,25 +20,14 @@ import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 val wearAppModule = module {
-    // Room Database for Wear OS
-    single {
-        Room.databaseBuilder(
-            androidContext(),
-            AppDatabase::class.java,
-            "fasting_history.db"
-        ).apply {
-            if (BuildConfig.DEBUG) {
-                fallbackToDestructiveMigration(true)
-            }
-        }.build()
+    // Notification schedule repository (lightweight DataStore)
+    single<NotificationScheduleRepository> {
+        NotificationScheduleRepository(get<DataStore<Preferences>>())
     }
-
-    single {
-        get<AppDatabase>().fastingRecordDao()
-    }
-
-    single<FastingHistoryRepository> {
-        FastingHistoryRepositoryImpl(fastingRecordDao = get())
+    
+    // Watch-specific use case that reads synced times from DataStore (registered as its own type)
+    single<WatchScheduleSmartNotificationsUseCase> {
+        WatchScheduleSmartNotificationsUseCase(get(), get(), get())
     }
 
     viewModelOf(::WearTodayViewModel)

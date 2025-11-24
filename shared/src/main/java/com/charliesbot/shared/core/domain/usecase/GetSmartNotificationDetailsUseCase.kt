@@ -14,6 +14,8 @@ import java.time.ZonedDateTime
  * - Smart reminder time (when to start fasting)
  * - Eating window closing time (1h before start, if applicable)
  * 
+ * Bedtime-based notifications are scheduled 5 hours before bedtime.
+ * 
  * Used by the Settings UI to show users exactly when and why they'll be notified.
  */
 class GetSmartNotificationDetailsUseCase(

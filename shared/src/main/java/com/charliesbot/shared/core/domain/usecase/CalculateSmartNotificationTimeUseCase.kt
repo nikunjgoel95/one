@@ -28,7 +28,7 @@ class CalculateSmartNotificationTimeUseCase(
         private const val REQUIRED_HISTORY_COUNT = 7
         private const val MAX_DAILY_FAST_HOURS = 30 // Exclude 36h fasts from average
         private const val DEFAULT_HOUR = 20 // 8 PM fallback
-        private const val BEDTIME_OFFSET_HOURS = 6 // Notify 6 hours before bedtime
+        private const val BEDTIME_OFFSET_HOURS = 5 // Notify 5 hours before bedtime
     }
 
     suspend operator fun invoke(): ZonedDateTime {

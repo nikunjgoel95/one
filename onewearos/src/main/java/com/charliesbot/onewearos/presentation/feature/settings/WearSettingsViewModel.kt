@@ -3,12 +3,10 @@ package com.charliesbot.onewearos.presentation.feature.settings
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.charliesbot.onewearos.presentation.data.NotificationScheduleRepository
+import com.charliesbot.onewearos.presentation.domain.WatchScheduleSmartNotificationsUseCase
 import com.charliesbot.shared.core.data.repositories.preferencesRepository.PreferencesRepository
-import com.charliesbot.shared.core.domain.usecase.CalculateSmartNotificationTimeUseCase
-import com.charliesbot.shared.core.domain.usecase.GetSmartNotificationDetailsUseCase
-import com.charliesbot.shared.core.domain.usecase.ScheduleSmartNotificationsUseCase
 import com.charliesbot.shared.core.models.NotificationStrategy
-import com.charliesbot.shared.core.models.SmartNotificationResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,55 +30,63 @@ data class SettingsUiState(
 class WearSettingsViewModel(
     application: Application,
     private val preferencesRepository: PreferencesRepository,
-    private val getSmartNotificationDetailsUseCase: GetSmartNotificationDetailsUseCase,
-    private val scheduleSmartNotificationsUseCase: ScheduleSmartNotificationsUseCase
+    private val notificationScheduleRepository: NotificationScheduleRepository,
+    private val scheduleSmartNotificationsUseCase: WatchScheduleSmartNotificationsUseCase
 ) : AndroidViewModel(application) {
-
-    private val _notificationDetails = MutableStateFlow<SmartNotificationResult?>(null)
 
     val uiState: StateFlow<SettingsUiState> = combine(
         preferencesRepository.getSmartNotificationsEnabled(),
         preferencesRepository.getVibrationEnabled(),
         preferencesRepository.getBedtime(),
-        _notificationDetails
-    ) { smartEnabled, vibrationEnabled, bedtime, details ->
+        notificationScheduleRepository.getSmartReminderTime(),
+        notificationScheduleRepository.getEatingWindowTime(),
+        notificationScheduleRepository.getStrategy()
+    ) { values: Array<*> ->
+        val smartEnabled = values[0] as Boolean
+        val vibrationEnabled = values[1] as Boolean
+        val bedtime = values[2] as LocalTime?
+        val smartReminderMillis = values[3] as Long
+        val eatingWindowMillis = values[4] as Long?
+        val strategyName = values[5] as String
+        
         val formatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+        
+        val smartReminderTime = java.time.Instant.ofEpochMilli(smartReminderMillis)
+            .atZone(java.time.ZoneId.systemDefault())
+            .toLocalTime()
+            .format(formatter)
+        
+        val eatingWindowTime = eatingWindowMillis?.let { millis ->
+            java.time.Instant.ofEpochMilli(millis)
+                .atZone(java.time.ZoneId.systemDefault())
+                .toLocalTime()
+                .format(formatter)
+        }
+        
+        val strategy = try {
+            NotificationStrategy.valueOf(strategyName)
+        } catch (e: Exception) {
+            NotificationStrategy.DEFAULT
+        }
         
         SettingsUiState(
             smartNotificationsEnabled = smartEnabled,
             vibrationEnabled = vibrationEnabled,
             bedtime = bedtime,
-            notificationStrategy = when (details?.strategy) {
+            notificationStrategy = when (strategy) {
                 NotificationStrategy.MOVING_AVERAGE -> "based on your routine"
                 NotificationStrategy.BEDTIME_BASED -> "based on bedtime"
                 NotificationStrategy.DEFAULT -> "default"
-                null -> "calculating..."
             },
-            smartReminderTime = details?.smartReminderTime?.toLocalTime()?.format(formatter) ?: "8:00 PM",
-            eatingWindowTime = details?.eatingWindowClosingTime?.toLocalTime()?.format(formatter),
-            is36HourFast = details?.eatingWindowClosingTime == null
+            smartReminderTime = smartReminderTime,
+            eatingWindowTime = eatingWindowTime,
+            is36HourFast = eatingWindowMillis == null || eatingWindowMillis == 0L
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = SettingsUiState()
     )
-    
-    init {
-        // Calculate notification details on initialization
-        calculateNotificationDetails()
-    }
-    
-    private fun calculateNotificationDetails() {
-        viewModelScope.launch {
-            try {
-                val details = getSmartNotificationDetailsUseCase()
-                _notificationDetails.value = details
-            } catch (e: Exception) {
-                // Keep default values on error
-            }
-        }
-    }
 
     fun toggleSmartNotifications() {
         viewModelScope.launch {
@@ -88,10 +94,10 @@ class WearSettingsViewModel(
             val newValue = !currentValue
             preferencesRepository.setSmartNotificationsEnabled(newValue)
             
-            // Reschedule notifications and recalculate details if enabled
+            // Reschedule notifications if enabled
+            // Note: Phone will sync updated schedule, watch just uses it
             if (newValue) {
                 scheduleSmartNotificationsUseCase()
-                calculateNotificationDetails()
             }
         }
     }
@@ -106,8 +112,9 @@ class WearSettingsViewModel(
     fun setBedtime(time: LocalTime?) {
         viewModelScope.launch {
             preferencesRepository.setBedtime(time)
-            // Recalculate and reschedule notifications with new bedtime
-            calculateNotificationDetails()
+            // Note: This saves on watch only. User should set bedtime on phone
+            // for it to be used in notification calculation.
+            // Phone will recalculate and sync new schedule to watch.
             if (preferencesRepository.getSmartNotificationsEnabled().stateIn(viewModelScope).value) {
                 scheduleSmartNotificationsUseCase()
             }

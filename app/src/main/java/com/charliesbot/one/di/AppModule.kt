@@ -6,6 +6,7 @@ import androidx.room.Room
 import com.charliesbot.one.BuildConfig
 import com.charliesbot.one.data.AndroidStringProvider
 import com.charliesbot.one.notifications.NotificationWorker
+import com.charliesbot.one.sync.NotificationScheduleSyncManager
 import com.charliesbot.shared.core.data.repositories.fastingHistoryRepository.FastingHistoryRepositoryImpl
 import com.charliesbot.one.services.LocalFastingCallback
 import com.charliesbot.shared.core.notifications.NotificationScheduler
@@ -63,12 +64,16 @@ val appModule = module {
     single<StringProvider> {
         AndroidStringProvider(androidContext())
     }
+    
+    single<NotificationScheduleSyncManager> {
+        NotificationScheduleSyncManager(get(), get())
+    }
 
     factory{ GetMonthlyFastingMapUseCase(get()) }
 
     viewModelOf(::TodayViewModel)
     viewModelOf(::YouViewModel)
 
-    single { LocalFastingCallback(get(), get()) }
+    single { LocalFastingCallback(get(), get(), get()) }
     single<FastingEventCallbacks> { get<LocalFastingCallback>() }
 }

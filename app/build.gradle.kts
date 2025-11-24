@@ -6,8 +6,9 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.google.gms.google.services)
-    alias(libs.plugins.google.firebase.crashlytics)
+    // Temporarily disabled - requires google-services.json credentials
+    // alias(libs.plugins.google.gms.google.services)
+    // alias(libs.plugins.google.firebase.crashlytics)
     alias(libs.plugins.jetbrains.kotlin.serialization)
 }
 
@@ -80,9 +81,10 @@ android {
         compose = true
         buildConfig = true
     }
-    firebaseCrashlytics {
-        nativeSymbolUploadEnabled = true
-    }
+    // Temporarily disabled - requires google-services.json credentials
+    // firebaseCrashlytics {
+    //     nativeSymbolUploadEnabled = true
+    // }
 }
 
 ksp {
@@ -96,7 +98,8 @@ dependencies {
     implementation(libs.androidx.glance)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
-    implementation(platform(libs.firebase.bom))
+    // Temporarily disabled - requires google-services.json credentials
+    // implementation(platform(libs.firebase.bom))
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)
     implementation(libs.koin.core.coroutines)
@@ -131,7 +134,8 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(project(":shared"))
     implementation(project(":features"))
-    implementation(libs.firebase.crashlytics)
+    // Temporarily disabled - requires google-services.json credentials
+    // implementation(libs.firebase.crashlytics)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

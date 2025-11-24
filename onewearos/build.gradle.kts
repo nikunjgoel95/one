@@ -6,9 +6,11 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.androidx.room)
-    alias(libs.plugins.google.gms.google.services)
-    alias(libs.plugins.google.firebase.crashlytics)
+    // Room removed - watch now uses lightweight DataStore for synced notification data
+    // alias(libs.plugins.androidx.room)
+    // Temporarily disabled - requires google-services.json credentials
+    // alias(libs.plugins.google.gms.google.services)
+    // alias(libs.plugins.google.firebase.crashlytics)
 }
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -80,22 +82,23 @@ android {
         buildConfig = true
     }
     
-    firebaseCrashlytics {
-         nativeSymbolUploadEnabled = true
-     }
+    // Temporarily disabled - requires google-services.json credentials
+    // firebaseCrashlytics {
+    //     nativeSymbolUploadEnabled = true
+    // }
 }
 
 ksp {
     arg("KOIN_CONFIG_CHECK", "true")
 }
 
-room {
-    schemaDirectory("$projectDir/schemas")
-}
-
 dependencies {
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.crashlytics)
+    // Temporarily disabled - requires google-services.json credentials
+    // implementation(platform(libs.firebase.bom))
+    // implementation(libs.firebase.crashlytics)
+    
+    // DataStore for lightweight notification schedule storage
+    implementation(libs.androidx.datastore.preferences)
     
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)
@@ -123,11 +126,11 @@ dependencies {
     implementation(libs.androidx.startup.runtime)
     implementation(project(":shared"))
     
-    // Room database
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
-    implementation(libs.firebase.crashlytics)
+    // Room removed - watch uses lightweight DataStore instead
+    // implementation(libs.androidx.room.runtime)
+    // implementation(libs.androidx.room.ktx)
+    // ksp(libs.androidx.room.compiler)
+    
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
